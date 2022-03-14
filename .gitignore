@@ -1,0 +1,4 @@
+/.aws/
+/logs/
+/.env
+*__pycache__
