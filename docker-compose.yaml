@@ -59,6 +59,7 @@ x-airflow-common:
     S3_BUCKET: ${S3_BUCKET}
     S3_KEY: ${S3_KEY}
     ATHENA_TABLE: ${ATHENA_TABLE}
+    ATHENA_DATABASE: ${ATHENA_DATABASE}
     _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:-}
   volumes:
     - ./dags:/opt/airflow/dags

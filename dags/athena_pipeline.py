@@ -38,11 +38,12 @@ TBLPROPERTIES ("skip.header.line.count"="1")
 """
 
 QUERY_PROCESS_TABLE = f"""
-CREATE TABLE output_{ATHENA_DATABASE}.{ATHENA_TABLE}_{{{{ ds_nodash }}}}
+CREATE TABLE {ATHENA_DATABASE}.output_{ATHENA_TABLE}_{{{{ ds_nodash }}}}
 WITH (
      format = 'TEXTFILE',
      external_location = 's3://{S3_BUCKET}/{S3_KEY}/output/',
-     field_delimiter = ',',
+     field_delimiter = ','
+)
 as
 select count(*) as num_passenger, survived, sex 
 from {ATHENA_DATABASE}.{ATHENA_TABLE}_{{{{ ds_nodash }}}} group by survived, sex
@@ -56,22 +57,23 @@ with DAG(
         dagrun_timeout=timedelta(minutes=60),
         tags=['example'],
         catchup=False,
+        default_args={
+            'database': ATHENA_DATABASE,
+            'output_location': f's3://{S3_BUCKET}/{S3_KEY}/query_result/',
+            'max_tries': None
+        }
 ) as dag:
+
+    # Add default arg for database, query_output_location and max tries
 
     delete_table = AthenaOperator(
         task_id='delete_input_table_if_exist',
         query=QUERY_DROP_TABLE,
-        database=ATHENA_DATABASE,
-        output_location=f's3://{S3_BUCKET}/{S3_KEY}',
-        max_tries=None,
     )
 
     create_table = AthenaOperator(
         task_id='create_input_table',
         query=QUERY_CREATE_TABLE,
-        database=ATHENA_DATABASE,
-        output_location=f's3://{S3_BUCKET}/{S3_KEY}',
-        max_tries=None,
     )
 
     # Convert to ORC for processing speed.
@@ -79,17 +81,11 @@ with DAG(
     delete_output_table = AthenaOperator(
         task_id='delete_output_table_if_exist',
         query=QUERY_DROP_OUTPUT_TABLE,
-        database=ATHENA_DATABASE,
-        output_location=f's3://{S3_BUCKET}/{S3_KEY}',
-        max_tries=None,
     )
 
     process_table = AthenaOperator(
         task_id='process_and_create_output_table',
         query=QUERY_PROCESS_TABLE,
-        database=ATHENA_DATABASE,
-        output_location=f's3://{S3_BUCKET}/{S3_KEY}',
-        max_tries=None,
     )
 
     delete_table >> create_table >> delete_output_table >> process_table
